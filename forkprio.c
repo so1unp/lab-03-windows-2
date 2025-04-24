@@ -1,8 +1,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>    // para señales
-#include <sys/times.h> // times()
+#include <signal.h>
+#include <sys/times.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <time.h>
 
 /*El programa forkprio.c debe crear un cierto
 número de procesos hijos, cada uno ejecutando con un valor de prioridad
@@ -20,11 +24,15 @@ int busywork(void)
     }
 }
 
-void handler(int signum)
+void handler()
 {
 
-    // imprime el número de la señal y su descripcion
-    printf("Child %d (nice %2d):\t%3li\n", getpid(), 0);
+    struct rusage usage; // estructura para almacenar el uso de recursos
+    getrusage(RUSAGE_SELF, &usage); // obtiene info sobre el uso de recursos del proceso actual (RUSAGE_SELF)
+    int prio = getpriority(PRIO_PROCESS, 0); // obtiene la prioridad del proceso actual (PRIO_PROCESS para un proceso en especifico)
+    long secs = usage.ru_utime.tv_sec; // obtiene el tiempo de CPU utilizado en segundos
+    printf("Child %d (nice %2d):\t%3li\n", getpid(), prio, secs);
+    exit(0);
 }
 
 int main(int argc, char *argv[])
@@ -32,18 +40,19 @@ int main(int argc, char *argv[])
 
     int cantHijos = atoi(argv[1]);
     int seg = atoi(argv[2]);
-    // int reducirPrioridad = atoi(argv[3]);
+    int reducirPrioridad = atoi(argv[3]);
 
     // estructura para manejar señales
     struct sigaction sa;
     sa.sa_handler = handler; // funcion que maneja la señal
     sa.sa_flags = 0;
 
-    sigaction(15, &sa, NULL);
-
-    __pid_t pidHijos[cantHijos];
+    sigaction(SIGTERM, &sa, NULL); // configura el handler para cuando llegue la señal SIGTERM
 
     __pid_t pidValue = 0;
+
+    // padre se convierte en lider de grupo
+    setpgid(0, 0);
 
     for (int i = 0; i < cantHijos; i++)
     {
@@ -51,15 +60,27 @@ int main(int argc, char *argv[])
         pidValue = fork();
         if (pidValue == 0)
         {
+            // cada hijo se une al grupo del padre
+            setpgid(0, getppid());
+            if (reducirPrioridad)
+                nice(i); // incrementa nice -> reduce prioridad
+
             printf("%d : %d\n", getpid(), i);
-            pidHijos[i] = getpid();
+            // pidHijos[i] = getpid();
             busywork();
         }
     }
 
-    sleep(seg);
-    __pid_t pgid = getpgid(pidValue);
-    kill(-pgid, SIGTERM);
-
-    exit(EXIT_SUCCESS);
+    if (seg > 0)
+    {
+        sleep(seg);
+        // enviar SIGTERM a todo el grupo del padre (todos los hijos)
+        kill(0, SIGTERM);
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        // ejecutar indefinidamente
+        pause();
+    }
 }
