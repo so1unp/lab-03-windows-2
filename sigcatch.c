@@ -38,3 +38,11 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
+
+
+/*
+La señales que no se pueden manejar son:
+SIGKILL y SIGSTOP. Estas señales no pueden ser capturadas, ignoradas o bloqueadas.
+SIGKILL: Se utiliza para terminar un proceso de forma inmediata.
+SIGSTOP: Se utiliza para detener (suspender) un proceso.
+*/
