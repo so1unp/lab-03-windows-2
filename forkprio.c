@@ -27,11 +27,11 @@ int busywork(void)
 void handler()
 {
 
-    struct rusage usage; // estructura para almacenar el uso de recursos
-    getrusage(RUSAGE_SELF, &usage); // obtiene info sobre el uso de recursos del proceso actual (RUSAGE_SELF)
-    int prio = getpriority(PRIO_PROCESS, 0); // obtiene la prioridad del proceso actual (PRIO_PROCESS para un proceso en especifico)
-    long secs = usage.ru_utime.tv_sec; // obtiene el tiempo de CPU utilizado en segundos
-    printf("Child %d (nice %2d):\t%3li\n", getpid(), prio, secs);
+    struct rusage usage;                                       // estructura para almacenar el uso de recursos
+    getrusage(RUSAGE_SELF, &usage);                            // obtiene info sobre el uso de recursos del proceso actual (RUSAGE_SELF)
+    int prio = getpriority(PRIO_PROCESS, 0);                   // obtiene la prioridad del proceso actual (PRIO_PROCESS para un proceso en especifico)
+    long secs = usage.ru_stime.tv_sec + usage.ru_utime.tv_sec; // obtiene el tiempo de CPU utilizado en segundos
+    printf("Child %d (nice %2d):\t%3ld\n", getpid(), prio, secs);
     exit(0);
 }
 
